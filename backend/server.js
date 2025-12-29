@@ -27,10 +27,30 @@ const PORT = process.env.PORT || 5001;
 // 中介層設定
 // ==========================================
 app.use(cors({
-  origin: process.env.CLIENT_URL 
-    ? process.env.CLIENT_URL.split(',') 
-    : ['http://localhost:3000'],
-  credentials: true
+  origin: function (origin, callback) {
+    // 允許的來源清單
+    const allowedOrigins = [
+      'http://localhost:3000',        // 本機開發網頁
+      'https://www.anxinshophub.com', // 您的正式網站
+      'capacitor://localhost',        // iOS App 來源
+      'http://localhost',             // Android App 來源
+      'https://localhost'             // 部分 Android 版本
+    ];
+    
+    // 邏輯判斷：
+    // 1. !origin: 允許沒有來源的請求 (某些手機請求或 Postman)
+    // 2. indexOf: 來源在上面的白名單內
+    // 3. startsWith: 允許本機區網連線 (方便您用手機連電腦測試 192.168.x.x)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('http://192.168.')) {
+      callback(null, true);
+    } else {
+      console.log('被 CORS 擋住的來源:', origin); // 方便除錯
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true, // 允許帶有 Cookie/Token 的請求
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // 允許的方法
+  allowedHeaders: ['Content-Type', 'Authorization'] // 允許的標頭
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
