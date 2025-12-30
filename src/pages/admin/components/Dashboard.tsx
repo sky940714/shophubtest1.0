@@ -36,7 +36,7 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      const response = await fetch('/api/orders/admin/dashboard/stats', {
+      const response = await fetch('https://www.anxinshophub.com/api/orders/admin/dashboard/stats', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

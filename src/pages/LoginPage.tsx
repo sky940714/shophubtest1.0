@@ -30,7 +30,7 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('https://www.anxinshophub.com/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +90,7 @@ const LoginPage: React.FC = () => {
 
     // 呼叫後端註冊 API
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('https://www.anxinshophub.com/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

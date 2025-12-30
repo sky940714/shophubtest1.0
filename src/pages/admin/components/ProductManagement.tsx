@@ -28,7 +28,7 @@ const ProductManagement: React.FC = () => {
 
   const fetchProducts = async () => {
   try {
-    const response = await fetch('/api/products');
+    const response = await fetch('https://www.anxinshophub.com/api/products');
     const data = await response.json();
 
     if (data.success) {
@@ -81,7 +81,7 @@ const getCategoryName = (categoryId: number): string => {
   try {
     const token = localStorage.getItem('token');
 
-    const response = await fetch(`/api/products/${id}`, {
+    const response = await fetch(`https://www.anxinshophub.com/api/products/${id}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`

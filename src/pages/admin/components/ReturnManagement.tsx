@@ -24,7 +24,7 @@ const ReturnManagement: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await fetch('/api/returns/admin/list', {
+      const res = await fetch('https://www.anxinshophub.com/api/returns/admin/list', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -44,7 +44,7 @@ const ReturnManagement: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`/api/returns/admin/${id}/status`, {
+      const res = await fetch(`https://www.anxinshophub.com/api/returns/admin/${id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

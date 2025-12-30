@@ -1,37 +1,52 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 
-// 定義接收的資料型別
 interface ECPayParams {
   actionUrl: string;
-  [key: string]: any; // 允許其他任意欄位
+  orderId?: number;
+  [key: string]: any;
 }
 
 const ECPayForm = ({ params }: { params: ECPayParams | null }) => {
-  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    // 當 params 有值，且表單元素存在時，自動送出
-    if (params && formRef.current) {
-      console.log('正在跳轉至綠界...');
-      formRef.current.submit();
-    }
+    if (!params) return;
+
+    const handlePayment = async () => {
+      const isApp = Capacitor.isNativePlatform();
+
+      if (isApp && params.orderId) {
+        // === App 環境：用 Browser 插件開啟後端中繼頁面 ===
+        console.log('App 環境，使用 Browser 插件跳轉...');
+        await Browser.open({
+          url: `https://www.anxinshophub.com/api/ecpay/pay/${params.orderId}`
+        });
+      } else {
+        // === 網頁環境：傳統表單提交 ===
+        console.log('網頁環境，使用表單提交...');
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = params.actionUrl;
+
+        Object.keys(params).forEach(key => {
+          if (key === 'actionUrl' || key === 'orderId') return;
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = params[key];
+          form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+      }
+    };
+
+    handlePayment();
   }, [params]);
 
-  if (!params) return null;
-
-  return (
-    <form 
-      ref={formRef} 
-      method="POST" 
-      action={params.actionUrl} 
-      style={{ display: 'none' }} // 隱藏表單不讓使用者看到
-    >
-      {Object.keys(params).map((key) => {
-        if (key === 'actionUrl') return null;
-        return <input key={key} type="hidden" name={key} value={params[key]} />;
-      })}
-    </form>
-  );
+  return null;
 };
 
 export default ECPayForm;

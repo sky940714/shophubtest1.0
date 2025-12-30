@@ -1,7 +1,11 @@
 // src/pages/checkout/components/ShippingForm.tsx
 import React, { useState, useEffect } from 'react';
-import { Store, Truck, CreditCard, MapPin, Banknote } from 'lucide-react'; // 新增 Banknote
+import { Store, Truck, CreditCard, MapPin, Banknote } from 'lucide-react';
+import { Browser } from '@capacitor/browser';
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import './styles/ShippingForm.css';
+
 
 interface ShippingInfo {
   name: string;
@@ -63,12 +67,12 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
   const [pickupStores, setPickupStores] = useState<any[]>([]);
   const [selectedPickupStore, setSelectedPickupStore] = useState<any>(null);
 
-   const [homeDeliveryFee, setHomeDeliveryFee] = useState<number>(100);
+  const [homeDeliveryFee, setHomeDeliveryFee] = useState<number>(100);
 
-   useEffect(() => {
+  useEffect(() => {
     const fetchShippingFee = async () => {
       try {
-        const res = await fetch('/api/settings/shipping-fee');
+        const res = await fetch('https://www.anxinshophub.com/api/settings/shipping-fee');
         const data = await res.json();
         if (data.success) {
           setHomeDeliveryFee(data.fee);
@@ -84,7 +88,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
   useEffect(() => {
     const fetchPickupStores = async () => {
       try {
-        const res = await fetch('/api/pickup-stores');
+        const res = await fetch('https://www.anxinshophub.com/api/pickup-stores');
         const data = await res.json();
         if (data.success) {
           setPickupStores(data.stores);
@@ -97,17 +101,13 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
   }, []);
 
   // ==========================================
-  // 監聽綠界地圖回傳
+  // 監聽綠界地圖回傳（支援 App Deep Link + 網頁 postMessage）
   // ==========================================
   useEffect(() => {
-    const handleEcpayMessage = (event: MessageEvent) => {
-      const data = event.data;
-      
-      // 確保資料包含 storeId 才處理 (避免收到 React DevTools 等其他訊息)
+    // 處理門市資料的共用函數
+    const handleStoreData = (data: { storeId?: string; storeName?: string; storeAddress?: string }) => {
       if (data && data.storeId && data.storeName) {
-        console.log('收到綠界門市資料:', data);
-        
-        // 更新 React 狀態，讓畫面顯示選到的店
+        console.log('收到門市資料:', data);
         setShippingInfo(prev => ({
           ...prev,
           storeId: data.storeId,
@@ -117,75 +117,132 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
       }
     };
 
+    // 方法 1: 網頁環境 - postMessage
+    const handleEcpayMessage = (event: MessageEvent) => {
+      handleStoreData(event.data);
+    };
     window.addEventListener('message', handleEcpayMessage);
-    return () => window.removeEventListener('message', handleEcpayMessage);
+
+    // 方法 2: App 環境 - Deep Link
+    let appUrlListener: any = null;
+    
+    if (Capacitor.isNativePlatform()) {
+      App.addListener('appUrlOpen', async (event) => {
+        console.log('App URL opened:', event.url);
+        
+        // 解析 URL: shophubapp://map-callback?storeId=xxx&storeName=xxx&storeAddress=xxx
+        if (event.url.includes('map-callback')) {
+          try {
+            // 處理 custom scheme URL
+            const urlString = event.url.replace('shophubapp://', 'https://dummy.com/');
+            const url = new URL(urlString);
+            const storeData = {
+              storeId: url.searchParams.get('storeId') || '',
+              storeName: decodeURIComponent(url.searchParams.get('storeName') || ''),
+              storeAddress: decodeURIComponent(url.searchParams.get('storeAddress') || '')
+            };
+            
+            handleStoreData(storeData);
+            
+            // 關閉 Browser
+            try {
+              await Browser.close();
+            } catch (e) {
+              console.log('Browser already closed');
+            }
+          } catch (e) {
+            console.error('解析 URL 失敗:', e);
+          }
+        }
+      }).then(listener => {
+        appUrlListener = listener;
+      });
+    }
+
+    // 清理
+    return () => {
+      window.removeEventListener('message', handleEcpayMessage);
+      if (appUrlListener) {
+        appUrlListener.remove();
+      }
+    };
   }, [setShippingInfo]);
 
   // 選擇超商門市 (開啟綠界地圖)
-  // src/pages/checkout/components/ShippingForm.tsx
-
   const handleSelectStore = async () => {
     if (!shippingSubType) {
       alert('請先選擇超商類型 (7-11/全家/萊爾富/OK)');
       return;
     }
 
-    // ✅ 修改 1：點擊當下立刻開啟空白視窗 (避開攔截)
-    // 設定視窗大小與位置
-    const width = 800;
-    const height = 600;
-    const left = (window.screen.width - width) / 2;
-    const top = (window.screen.height - height) / 2;
-    
-    const mapWindow = window.open(
-      '', 
-      'ECPayMapPopup', // 注意：名稱必須與下方 form.target 一致
-      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
-    );
-
-    // 防呆：如果還是被擋住
-    if (!mapWindow) {
-      alert('瀏覽器阻擋了彈跳視窗，請允許本網站顯示視窗後再試一次。');
-      return;
-    }
-
-    // 可以在新視窗顯示載入中
-    mapWindow.document.write('<h3 style="text-align:center; margin-top: 100px;">正在連線至物流地圖...</h3>');
-
     try {
-      // ✅ 修改 2：視窗開啟後，才去後端抓資料
-      const response = await fetch(`/api/ecpay/map?logisticsSubType=${shippingSubType}`);
-      
+      // 從後端取得綠界參數
+      const response = await fetch(`https://www.anxinshophub.com/api/ecpay/map?logisticsSubType=${shippingSubType}`);
       if (!response.ok) throw new Error('Network response was not ok');
       const params = await response.json();
 
-      // 建立表單
-      const form = document.createElement('form');
-      form.method = 'POST';
-      form.action = params.actionUrl;
-      form.target = 'ECPayMapPopup'; // ✅ 修改 3：表單目標指向剛剛開啟的視窗
+      // 判斷是否在 App 環境
+      const isApp = Capacitor.isNativePlatform();
 
-      Object.keys(params).forEach(key => {
-        if (key !== 'actionUrl') {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = key;
-          input.value = params[key];
-          form.appendChild(input);
+      if (isApp) {
+        // === App 環境：用 Capacitor Browser ===
+        
+        // 建立表單資料
+        const formData = new URLSearchParams();
+        Object.keys(params).forEach(key => {
+          if (key !== 'actionUrl') {
+            formData.append(key, params[key]);
+          }
+        });
+
+        // 開啟綠界地圖
+        await Browser.open({ 
+          url: `${params.actionUrl}?${formData.toString()}`,
+        });
+
+      } else {
+        // === 網頁環境：維持原本的 window.open ===
+        const width = 800;
+        const height = 600;
+        const left = (window.screen.width - width) / 2;
+        const top = (window.screen.height - height) / 2;
+        
+        const mapWindow = window.open(
+          '', 
+          'ECPayMapPopup',
+          `width=${width},height=${height},left=${left},top=${top},scrollbars=yes,resizable=yes`
+        );
+
+        if (!mapWindow) {
+          alert('瀏覽器阻擋了彈跳視窗，請允許本網站顯示視窗後再試一次。');
+          return;
         }
-      });
 
-      document.body.appendChild(form);
-      
-      // ✅ 修改 4：送出表單 (地圖會顯示在剛剛那個視窗裡)
-      form.submit();
-      document.body.removeChild(form);
+        mapWindow.document.write('<h3 style="text-align:center; margin-top: 100px;">正在連線至物流地圖...</h3>');
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = params.actionUrl;
+        form.target = 'ECPayMapPopup';
+
+        Object.keys(params).forEach(key => {
+          if (key !== 'actionUrl') {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = params[key];
+            form.appendChild(input);
+          }
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+      }
 
     } catch (error) {
       console.error('開啟門市地圖失敗:', error);
       alert('開啟門市地圖失敗，請稍後再試');
-      // 如果失敗了，把剛剛開的空白視窗關掉
-      mapWindow.close();
     }
   };
 
@@ -461,9 +518,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
               </div>
             )}
 
-            {/* ================================================= */}
-            {/* [新增] 宅配貨到付款 - 只有宅配才顯示             */}
-            {/* ================================================= */}
+            {/* [新增] 宅配貨到付款 - 只有宅配才顯示 */}
             {shippingMethod === 'home' && (
               <div
                 className={`payment-option ${paymentMethod === 'cod' ? 'selected' : ''}`}
@@ -483,9 +538,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
               </div>
             )}
 
-            {/* ================================================= */}
-            {/* 線上付款方式 - 只有 "非自取" 且 "非宅配" 才顯示     */}
-            {/* ================================================= */}
+            {/* 線上付款方式 - 只有 "非自取" 且 "非宅配" 才顯示 */}
             {shippingMethod !== 'pickup' && shippingMethod !== 'home' && (
               <>
                 <div

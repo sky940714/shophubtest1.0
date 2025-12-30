@@ -141,7 +141,7 @@ const sensors = useSensors(
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/categories');
+      const response = await fetch('https://www.anxinshophub.com/api/categories');
       const data = await response.json();
 
       if (data.success) {
@@ -200,7 +200,7 @@ const handleDragEnd = async (event: DragEndEvent) => {
         return;
       }
 
-      const response = await fetch('/api/categories/update-order', {
+      const response = await fetch('https://www.anxinshophub.com/api/categories/update-order', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -242,7 +242,7 @@ const handleDragEnd = async (event: DragEndEvent) => {
         return;
       }
 
-      const response = await fetch('/api/categories', {
+      const response = await fetch('https://www.anxinshophub.com/api/categories', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -281,7 +281,7 @@ const handleDragEnd = async (event: DragEndEvent) => {
         return;
       }
 
-      const response = await fetch(`/api/categories/${category.id}`, {
+      const response = await fetch(`https://www.anxinshophub.com/api/categories/${category.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -320,7 +320,7 @@ const handleDragEnd = async (event: DragEndEvent) => {
         return;
       }
 
-      const response = await fetch(`/api/categories/${category.id}`, {
+      const response = await fetch(`https://www.anxinshophub.com/api/categories/${category.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -348,7 +348,7 @@ const handleDragEnd = async (event: DragEndEvent) => {
     setProductsLoading(true);
 
     try {
-      const response = await fetch(`/api/products/category/${category.id}`);
+      const response = await fetch(`https://www.anxinshophub.com/api/products/category/${category.id}`);
       const data = await response.json();
 
       if (data.success) {

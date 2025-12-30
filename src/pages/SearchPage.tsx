@@ -56,7 +56,7 @@ const SearchPage: React.FC = () => {
       try {
         setIsLoading(true);
         // 呼叫後端 API
-        const response = await fetch('/api/products/published');
+        const response = await fetch('https://www.anxinshophub.com/api/products/published');
         
         if (!response.ok) {
           throw new Error('無法連線至伺服器');

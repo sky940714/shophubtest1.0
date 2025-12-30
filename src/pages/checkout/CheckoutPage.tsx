@@ -81,7 +81,7 @@
     useEffect(() => {
       const fetchFee = async () => {
         try {
-          const res = await fetch('/api/settings/shipping-fee');
+          const res = await fetch('https://www.anxinshophub.com/api/settings/shipping-fee');
           const data = await res.json();
           if (data.success) {
             setHomeDeliveryFee(data.fee);
@@ -101,13 +101,13 @@
 
         try {
           // 取得會員資料（Email）
-          const profileRes = await fetch('/api/members/profile', {
+          const profileRes = await fetch('https://www.anxinshophub.com/api/members/profile', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const profileData = await profileRes.json();
 
           // 取得預設地址
-          const addressRes = await fetch('/api/members/addresses/default', {
+          const addressRes = await fetch('https://www.anxinshophub.com/api/members/addresses/default', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const addressData = await addressRes.json();
@@ -236,7 +236,7 @@
     }))
         };
 
-        const response = await fetch('/api/orders/create', {
+        const response = await fetch('https://www.anxinshophub.com/api/orders/create', {
             method: 'POST',
             headers: {
             'Content-Type': 'application/json',

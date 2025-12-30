@@ -215,7 +215,7 @@ const OrderManagement: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       // ✅ 修正 5: 改為相對路徑 (重要！)
-      const response = await fetch('/api/ecpay/create-shipping', {
+      const response = await fetch('https://www.anxinshophub.com/api/ecpay/create-shipping', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

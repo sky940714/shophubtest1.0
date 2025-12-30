@@ -25,7 +25,7 @@ const OrderSuccessPage: React.FC = () => {
   const fetchOrderDetail = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/orders/${orderNo}`, {
+      const response = await fetch(`https://www.anxinshophub.com/api/orders/${orderNo}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

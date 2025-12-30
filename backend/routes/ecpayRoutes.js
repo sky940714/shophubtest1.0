@@ -23,4 +23,7 @@ router.get('/print-shipping', ecpayController.printShippingLabel);   // 列印�
 
 router.post('/logistics-callback', ecpayController.handleLogisticsCallback);
 
+// 新增這行
+router.get('/pay/:orderId', ecpayController.getPaymentPage);
+
 module.exports = router;

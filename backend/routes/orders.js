@@ -147,7 +147,7 @@ const total = subtotal + shippingFee;
       success: true,
       message: '訂單建立成功',
       orderNo: orderNo,
-      ecpayParams: ecpayParams // <--- 關鍵：回傳這包給前端 ECPayForm 用
+      ecpayParams: ecpayParams ? { ...ecpayParams, orderId: orderId } : null
     });
 
   } catch (error) {
@@ -550,18 +550,25 @@ router.get('/admin/dashboard/stats', protect, async (req, res) => {
 // 輔助函數: 產生訂單編號
 // ========================================
 async function generateOrderNo(connection) {
-  const today = new Date();
-  const dateStr = today.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+  const now = new Date();
+  const taiwanTime = new Date(now.getTime() + (8 * 60 * 60 * 1000));
+  const dateStr = taiwanTime.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+  const todayDate = taiwanTime.toISOString().slice(0, 10); // YYYY-MM-DD
   
-  // 查詢今天已有幾筆訂單
+  // 使用 INSERT ... ON DUPLICATE KEY UPDATE 確保原子操作
+  await connection.query(`
+    INSERT INTO order_sequences (date, last_number)
+    VALUES (?, 1)
+    ON DUPLICATE KEY UPDATE last_number = last_number + 1
+  `, [todayDate]);
+
+  // 取得更新後的流水號
   const [result] = await connection.query(`
-    SELECT COUNT(*) as count FROM orders 
-    WHERE DATE(created_at) = CURDATE()
-  `);
-  
-  const todayCount = result[0].count + 1;
-  const orderNo = `ORD${dateStr}${String(todayCount).padStart(3, '0')}`;
-  
+    SELECT last_number FROM order_sequences WHERE date = ?
+  `, [todayDate]);
+
+  const orderNo = `ORD${dateStr}${String(result[0].last_number).padStart(3, '0')}`;
+
   return orderNo;
 }
 
