@@ -9,6 +9,7 @@
 .wishlist-header {
   background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
   padding: 1.5rem 1rem;
+  padding-top: calc(1.5rem + env(safe-area-inset-top));
   color: white;
 }
 

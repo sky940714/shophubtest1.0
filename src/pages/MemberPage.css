@@ -9,6 +9,7 @@
 .member-header {
   background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
   padding: 2rem 1rem 1.5rem;
+  padding-top: calc(2rem + env(safe-area-inset-top));
   color: white;
 }
 

@@ -9,6 +9,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px;
+  padding-top: calc(16px + env(safe-area-inset-top));
   background: #fff;
   border-bottom: 1px solid #eee;
   position: sticky;

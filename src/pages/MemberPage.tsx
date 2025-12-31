@@ -40,7 +40,7 @@ interface ShippingAddress {
 
 const MemberPage: React.FC = () => {
   const navigate = useNavigate();
-  const API_BASE = '/api';
+  const API_BASE = 'https://www.anxinshophub.com/api';
 
   // 會員資料
   const [profile, setProfile] = useState<MemberProfile | null>(null);

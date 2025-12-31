@@ -38,7 +38,7 @@ interface HeroBanner {
   is_active: boolean;
 }
 
-const API_BASE = '/api';
+const API_BASE = 'https://www.anxinshophub.com/api';
 
 const MainSettings: React.FC = () => {
   const [searchEmail, setSearchEmail] = useState('');
