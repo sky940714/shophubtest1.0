@@ -1,4 +1,341 @@
-/* 在 OrderDetailPage.css 最後加上這些 */
+/* src/styles/OrderDetailPage.css */
+
+/* 頁面容器 */
+.order-detail-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 20px;
+  padding-top: calc(20px + env(safe-area-inset-top));
+}
+
+.page-header {
+  max-width: 800px;
+  margin: 0 auto 20px;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+  width: fit-content;
+}
+
+.back-button:hover {
+  background: #f5f5f5;
+}
+
+.detail-container {
+  max-width: 800px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 狀態卡片 */
+.status-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.status-left {
+  flex: 1;
+}
+
+.status-right {
+  display: flex;
+  align-items: center;
+}
+
+.order-number {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 8px 0;
+}
+
+.order-date {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.order-status {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-processing {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.status-shipped {
+  background: #e0e7ff;
+  color: #6366f1;
+}
+
+.status-delivered {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.status-completed {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.status-cancelled {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* 資訊卡片 */
+.info-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: #333;
+}
+
+.card-content {
+  padding: 20px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-size: 14px;
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.info-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  text-align: right;
+  word-break: break-word;
+}
+
+.info-value.logistics-no {
+  font-family: monospace;
+  color: #3b82f6;
+}
+
+/* 付款狀態 */
+.payment-status-pending {
+  color: #d97706;
+}
+
+.payment-status-paid {
+  color: #059669;
+}
+
+.payment-status-failed {
+  color: #dc2626;
+}
+
+.payment-status-refunded {
+  color: #9ca3af;
+}
+
+/* 物流追蹤提示 */
+.tracking-tip {
+  margin-top: 8px;
+  padding: 12px;
+  background: #eff6ff;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1e40af;
+}
+
+/* 付款提示 */
+.payment-notice {
+  margin-top: 12px;
+  padding: 12px;
+  background: #fef3c7;
+  border-radius: 8px;
+  border-left: 4px solid #f59e0b;
+}
+
+.payment-notice p {
+  margin: 0;
+  font-size: 14px;
+  color: #92400e;
+}
+
+/* 商品列表 */
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.order-item {
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.item-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 16px;
+}
+
+.item-info {
+  flex: 1;
+}
+
+.item-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.item-price {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.item-right {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.item-quantity {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.item-subtotal {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 訂單摘要 */
+.order-summary {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 16px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.summary-row.total {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  padding-top: 12px;
+}
+
+.summary-divider {
+  height: 2px;
+  background: #e5e7eb;
+  margin: 8px 0;
+}
+
+.total-amount {
+  color: #ef4444;
+}
+
+/* 操作按鈕 */
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.btn-cancel-order,
+.btn-pay-now {
+  flex: 1;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-cancel-order {
+  background: white;
+  color: #dc2626;
+  border: 2px solid #dc2626;
+}
+
+.btn-cancel-order:hover {
+  background: #fef2f2;
+}
+
+.btn-pay-now {
+  background: #10b981;
+  color: white;
+}
+
+.btn-pay-now:hover {
+  background: #059669;
+}
 
 /* 載入動畫 */
 .loading-container {
@@ -61,114 +398,32 @@
   background: #2563eb;
 }
 
-/* 狀態卡片更新 */
-.status-left {
-  flex: 1;
-}
-
-.status-right {
-  display: flex;
-  align-items: center;
-}
-
-/* 物流追蹤提示 */
-.tracking-tip {
-  margin-top: 8px;
-  padding: 12px;
-  background: #eff6ff;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #1e40af;
-}
-
-/* 付款提示 */
-.payment-notice {
-  margin-top: 12px;
-  padding: 12px;
-  background: #fef3c7;
-  border-radius: 8px;
-  border-left: 4px solid #f59e0b;
-}
-
-.payment-notice p {
-  margin: 0;
-  font-size: 14px;
-  color: #92400e;
-}
-
-/* 商品項目更新 */
-.item-main {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  gap: 16px;
-}
-
-.item-right {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-/* 摘要分隔線 */
-.summary-divider {
-  height: 2px;
-  background: #e5e7eb;
-  margin: 8px 0;
-}
-
-/* 操作按鈕 */
-.action-buttons {
-  display: flex;
-  gap: 12px;
-  margin-top: 20px;
-}
-
-.btn-cancel-order,
-.btn-pay-now {
-  flex: 1;
-  padding: 14px 24px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.btn-cancel-order {
-  background: white;
-  color: #dc2626;
-  border: 2px solid #dc2626;
-}
-
-.btn-cancel-order:hover {
-  background: #fef2f2;
-}
-
-.btn-pay-now {
-  background: #10b981;
-  color: white;
-}
-
-.btn-pay-now:hover {
-  background: #059669;
-}
-
-/* 已送達狀態 */
-.status-delivered {
-  background: #e0e7ff;
-  color: #4338ca;
-}
-
-/* 已退款狀態 */
-.payment-status-refunded {
-  color: #9ca3af;
-}
-
-/* 響應式更新 */
+/* 響應式設計 */
 @media (max-width: 768px) {
+  .order-detail-page {
+    padding: 12px;
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+
+  .status-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .status-right {
+    align-self: flex-start;
+  }
+
+  .info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .info-value {
+    text-align: left;
+  }
+
   .item-main {
     flex-direction: column;
     align-items: flex-start;
@@ -177,6 +432,7 @@
   .item-right {
     width: 100%;
     justify-content: space-between;
+    margin-top: 8px;
   }
   
   .action-buttons {

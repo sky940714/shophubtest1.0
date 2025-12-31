@@ -4,6 +4,7 @@
   min-height: 100vh;
   background-color: #f5f5f5;
   padding: 40px 20px;
+  padding-top: calc(40px + env(safe-area-inset-top));
   display: flex;
   align-items: center;
   justify-content: center;

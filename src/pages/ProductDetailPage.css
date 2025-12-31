@@ -428,6 +428,7 @@ html, body {
 @media (max-width: 768px) {
   .product-detail-page {
     padding: 8px;
+    padding-top: calc(8px + env(safe-area-inset-top));
     box-sizing: border-box;
     overflow-x: hidden;
     width: 100%;

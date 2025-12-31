@@ -4,7 +4,7 @@
   min-height: 100vh;
   background-color: #f5f5f5;
   padding: 20px;
-  /* 防止水平卷軸出現 */
+  padding-top: calc(20px + env(safe-area-inset-top));
   width: 100%; 
   box-sizing: border-box;
   overflow-x: hidden; 
