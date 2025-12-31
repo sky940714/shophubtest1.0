@@ -259,12 +259,49 @@ const printShippingLabel = async (req, res) => {
   }
 };
 
-const handleLogisticsCallback = (req, res) => {
+// ==========================================
+// 7. 接收物流狀態回調 (自動更新訂單狀態)
+// ==========================================
+const handleLogisticsCallback = async (req, res) => {
   try {
-    console.log('收到物流狀態回調:', req.body);
+    const logisticsData = req.body;
+    console.log('📦 收到綠界物流回調:', logisticsData);
+
+    const { AllPayLogisticsID, RtnCode } = logisticsData;
+    let newStatus = null;
+    const code = String(RtnCode);
+    
+    // 3001, 3002, 3003: 賣家已到門市寄貨 -> 設為 'shipped' (已出貨)
+    if (['3001', '3002', '3003', '3024', '2001'].includes(code)) {
+      newStatus = 'shipped'; 
+    } 
+    // 2030: 商品已送達門市 -> 設為 'arrived' (已送達)
+    else if (code === '2030') {
+      newStatus = 'arrived';
+    } 
+    // 2067: 消費者成功取件 -> 設為 'completed' (已完成)
+    else if (code === '2067') {
+      newStatus = 'completed'; 
+    } 
+    // 2063, 2068, 2073: 門市退貨/未取 -> 設為 'returned' (退貨)
+    else if (['2063', '2068', '2073'].includes(code)) {
+      newStatus = 'returned'; 
+    }
+
+    // 更新資料庫
+    if (newStatus) {
+      const [result] = await promisePool.execute(
+        `UPDATE orders SET status = ?, updated_at = NOW() WHERE ecpay_logistics_id = ?`,
+        [newStatus, AllPayLogisticsID]
+      );
+      if (result.affectedRows > 0) {
+        console.log(`✅ 訂單狀態更新為: ${newStatus} (物流編號: ${AllPayLogisticsID})`);
+      }
+    }
+
     res.send('1|OK');
   } catch (error) {
-    console.error(error);
+    console.error('❌ 物流回調失敗:', error);
     res.send('1|OK');
   }
 };

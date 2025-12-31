@@ -16,7 +16,7 @@ router.post('/create', protect, async (req, res) => {
     await connection.beginTransaction();
     
     const userId = req.user.id;
-    // 修改後
+    
     const {
       shippingInfo,
       shippingMethod,
@@ -29,31 +29,30 @@ router.post('/create', protect, async (req, res) => {
       items
     } = req.body;
 
-    // 後端重新計算運費（安全性）
-    // 從資料庫讀取宅配運費設定
-let homeDeliveryFee = 100; // 預設值
-const [feeSettings] = await connection.query(
-  `SELECT setting_value FROM settings WHERE setting_key = 'home_delivery_fee'`
-);
-if (feeSettings.length > 0) {
-  homeDeliveryFee = parseInt(feeSettings[0].setting_value) || 100;
-}
+    // 1. 取得運費設定
+    let homeDeliveryFee = 100; // 預設值
+    const [feeSettings] = await connection.query(
+      `SELECT setting_value FROM settings WHERE setting_key = 'home_delivery_fee'`
+    );
+    if (feeSettings.length > 0) {
+      homeDeliveryFee = parseInt(feeSettings[0].setting_value) || 100;
+    }
 
-// 計算運費
-function calculateShippingFee(method, subtotal, homeFee) {
-  if (!method || method === 'pickup') return 0;
-  if (method === 'cvs') return subtotal >= 500 ? 0 : 60;
-  if (method === 'home') return subtotal >= 1000 ? 0 : homeFee;
-  return 0;
-}
+    // 2. 計算運費函數
+    function calculateShippingFee(method, subtotal, homeFee) {
+      if (!method || method === 'pickup') return 0;
+      if (method === 'cvs') return subtotal >= 500 ? 0 : 60;
+      if (method === 'home') return subtotal >= 1000 ? 0 : homeFee;
+      return 0;
+    }
 
-const shippingFee = calculateShippingFee(shippingMethod, subtotal, homeDeliveryFee);
-const total = subtotal + shippingFee;
+    const shippingFee = calculateShippingFee(shippingMethod, subtotal, homeDeliveryFee);
+    const total = subtotal + shippingFee;
 
-    // 產生訂單編號 (格式: ORD20251209001)
+    // 3. 產生訂單編號 (格式: ORD20251209001)
     const orderNo = await generateOrderNo(connection);
 
-    // 插入訂單主表
+    // 4. 插入訂單主表
     const [orderResult] = await connection.query(`
       INSERT INTO orders (
         order_no, user_id,
@@ -76,8 +75,9 @@ const total = subtotal + shippingFee;
 
     const orderId = orderResult.insertId;
 
-    // ✅ 修正：插入訂單明細（保存完整快照）
+    // 5. 插入訂單明細 並 扣除庫存 (防超賣邏輯)
     for (const item of items) {
+      // 5-1. 插入明細
       await connection.query(`
         INSERT INTO order_items (
           order_id, product_id, variant_id,
@@ -87,34 +87,42 @@ const total = subtotal + shippingFee;
       `, [
         orderId,
         item.product_id,
-        item.variant_id || null,         // ✅ 修正：規格 ID
-        item.name,                        // 商品名稱快照
-        item.image_url || null,           // ✅ 修正：商品圖片快照
-        item.variant_name || null,        // ✅ 修正：規格名稱快照
+        item.variant_id || null,
+        item.name,
+        item.image_url || null,
+        item.variant_name || null,
         item.price,
         item.quantity,
         item.price * item.quantity
       ]);
 
-      // ✅ 修正：區分商品庫存和規格庫存
+      // 5-2. 扣減庫存 (加入 AND stock >= ? 防止超賣)
       if (item.variant_id) {
-        // 如果有規格，扣減規格庫存
-        await connection.query(`
+        // 如果有規格
+        const [result] = await connection.query(`
           UPDATE product_variants 
           SET stock = stock - ? 
-          WHERE id = ?
-        `, [item.quantity, item.variant_id]);
+          WHERE id = ? AND stock >= ?
+        `, [item.quantity, item.variant_id, item.quantity]);
+
+        if (result.affectedRows === 0) {
+            throw new Error(`商品 ${item.name} (${item.variant_name}) 庫存不足`);
+        }
       } else {
-        // 如果沒有規格，扣減商品總庫存
-        await connection.query(`
+        // 如果沒有規格 (主商品)
+        const [result] = await connection.query(`
           UPDATE products 
           SET stock = stock - ? 
-          WHERE id = ?
-        `, [item.quantity, item.product_id]);
+          WHERE id = ? AND stock >= ?
+        `, [item.quantity, item.product_id, item.quantity]);
+
+        if (result.affectedRows === 0) {
+            throw new Error(`商品 ${item.name} 庫存不足`);
+        }
       }
     }
 
-    // 如果是從購物車來的,清空購物車
+    // 6. 如果是從購物車來的, 清空購物車
     if (items[0] && items[0].cart_item_id) {
       const [carts] = await connection.query(`
         SELECT id FROM carts WHERE user_id = ?
@@ -130,16 +138,14 @@ const total = subtotal + shippingFee;
 
     await connection.commit();
 
-    // 準備綠界參數 (如果不是貨到付款)
+    // 7. 準備綠界參數 (如果不是貨到付款)
     let ecpayParams = null;
     if (paymentMethod !== 'cod') {
-      // 構建傳給 utils 的物件，這裡只傳必要的，其他讓 utils 處理
       const orderData = {
         order_no: orderNo,
         total: total,
-        created_at: new Date() // 傳入當下時間讓 utils 格式化
+        created_at: new Date()
       };
-      // 產生加密參數
       ecpayParams = ecpayUtils.getParams(orderData);
     }
 
@@ -172,7 +178,6 @@ router.get('/:orderNo', protect, async (req, res) => {
     const { orderNo } = req.params;
     const userId = req.user.id;
 
-    // 查詢訂單基本資料
     const [orders] = await promisePool.query(`
       SELECT * FROM orders 
       WHERE order_no = ? AND user_id = ?
@@ -187,7 +192,6 @@ router.get('/:orderNo', protect, async (req, res) => {
 
     const order = orders[0];
 
-    // 查詢訂單商品明細
     const [items] = await promisePool.query(`
       SELECT * FROM order_items WHERE order_id = ?
     `, [order.id]);
@@ -217,7 +221,6 @@ router.get('/user/list', protect, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // 查詢該會員的所有訂單
     const [orders] = await promisePool.query(`
       SELECT 
         id, order_no, total, status, payment_status,
@@ -247,8 +250,6 @@ router.get('/user/list', protect, async (req, res) => {
 // ========================================
 router.get('/admin/all', protect, async (req, res) => {
   try {
-    // TODO: 檢查是否為管理員
-
     // 分頁參數
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
@@ -258,30 +259,25 @@ router.get('/admin/all', protect, async (req, res) => {
     const search = req.query.search || '';
     const status = req.query.status || '';
     
-    // 建立動態查詢條件
     let whereClause = 'WHERE 1=1';
     const params = [];
     
-    // 搜尋：訂單編號或客戶名稱
     if (search) {
       whereClause += ' AND (o.order_no LIKE ? OR o.receiver_name LIKE ?)';
       params.push(`%${search}%`, `%${search}%`);
     }
     
-    // 篩選：訂單狀態
     if (status && status !== 'all') {
       whereClause += ' AND o.status = ?';
       params.push(status);
     }
     
-    // 查詢總筆數
     const [countResult] = await promisePool.query(
       `SELECT COUNT(*) as total FROM orders o ${whereClause}`,
       params
     );
     const total = countResult[0].total;
 
-    // 查詢訂單列表
     const [orders] = await promisePool.query(`
       SELECT 
         o.id, o.order_no, o.receiver_name, o.total, 
@@ -320,7 +316,6 @@ router.get('/admin/:orderNo', protect, async (req, res) => {
   try {
     const { orderNo } = req.params;
 
-    // 查詢訂單基本資料
     const [orders] = await promisePool.query(`
       SELECT o.*, m.email as user_email, m.name as user_name
       FROM orders o
@@ -337,7 +332,6 @@ router.get('/admin/:orderNo', protect, async (req, res) => {
 
     const order = orders[0];
 
-    // 查詢訂單商品明細
     const [items] = await promisePool.query(`
       SELECT * FROM order_items WHERE order_id = ?
     `, [order.id]);
@@ -380,7 +374,6 @@ router.put('/admin/:orderNo/status', protect, async (req, res) => {
       });
     }
 
-    // 查詢訂單資訊
     const [orders] = await connection.query(`
       SELECT id, user_id, subtotal, status FROM orders WHERE order_no = ?
     `, [orderNo]);
@@ -395,23 +388,18 @@ router.put('/admin/:orderNo/status', protect, async (req, res) => {
     const order = orders[0];
     const oldStatus = order.status;
     
-    // 更新訂單狀態
     await connection.query(`
       UPDATE orders SET status = ? WHERE order_no = ?
     `, [status, orderNo]);
 
-    // ✅ 當狀態改為 completed 且之前不是 completed 時，自動加點數
+    // ✅ 完成訂單加點數
     if (status === 'completed' && oldStatus !== 'completed') {
-      // 計算點數：每100元1點（只算商品金額，不含運費）
       const points = Math.floor(order.subtotal / 100);
-      
       if (points > 0) {
-        // 更新會員點數
         await connection.query(`
           UPDATE members SET points = points + ? WHERE id = ?
         `, [points, order.user_id]);
         
-        // 記錄點數交易
         await connection.query(`
           INSERT INTO point_transactions (member_id, order_no, points, type, description)
           VALUES (?, ?, ?, 'earn', ?)
@@ -419,9 +407,8 @@ router.put('/admin/:orderNo/status', protect, async (req, res) => {
       }
     }
 
-    // ✅ 當訂單取消時，扣回已發放的點數
+    // ✅ 取消訂單扣點數
     if (status === 'cancelled' && oldStatus !== 'cancelled') {
-      // 查詢該訂單曾發放的點數總和
       const [earnedPoints] = await connection.query(`
         SELECT COALESCE(SUM(points), 0) as total_earned 
         FROM point_transactions 
@@ -431,22 +418,18 @@ router.put('/admin/:orderNo/status', protect, async (req, res) => {
       const pointsToDeduct = earnedPoints[0].total_earned || 0;
       
       if (pointsToDeduct > 0) {
-        // 查詢會員當前點數
         const [memberInfo] = await connection.query(`
           SELECT points FROM members WHERE id = ?
         `, [order.user_id]);
         
         const currentPoints = memberInfo[0]?.points || 0;
-        // 實際扣除的點數（不能讓餘額變成負數）
         const actualDeduct = Math.min(pointsToDeduct, currentPoints);
         
         if (actualDeduct > 0) {
-          // 扣回會員點數
           await connection.query(`
             UPDATE members SET points = points - ? WHERE id = ?
           `, [actualDeduct, order.user_id]);
           
-          // 記錄點數扣回交易
           await connection.query(`
             INSERT INTO point_transactions (member_id, order_no, points, type, description)
             VALUES (?, ?, ?, 'deduct', ?)
@@ -506,26 +489,10 @@ router.delete('/admin/:orderNo', protect, async (req, res) => {
 // ========================================
 router.get('/admin/dashboard/stats', protect, async (req, res) => {
   try {
-    // 統計總商品數
-    const [productCount] = await promisePool.query(`
-      SELECT COUNT(*) as total FROM products
-    `);
-
-    // 統計總訂單數
-    const [orderCount] = await promisePool.query(`
-      SELECT COUNT(*) as total FROM orders
-    `);
-
-    // 統計總會員數
-    const [memberCount] = await promisePool.query(`
-      SELECT COUNT(*) as total FROM members
-    `);
-
-    // 統計總營業額 (排除已取消的訂單)
-    const [revenue] = await promisePool.query(`
-      SELECT SUM(total) as total FROM orders 
-      WHERE status != 'cancelled'
-    `);
+    const [productCount] = await promisePool.query(`SELECT COUNT(*) as total FROM products`);
+    const [orderCount] = await promisePool.query(`SELECT COUNT(*) as total FROM orders`);
+    const [memberCount] = await promisePool.query(`SELECT COUNT(*) as total FROM members`);
+    const [revenue] = await promisePool.query(`SELECT SUM(total) as total FROM orders WHERE status != 'cancelled'`);
 
     res.json({
       success: true,
@@ -555,14 +522,12 @@ async function generateOrderNo(connection) {
   const dateStr = taiwanTime.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
   const todayDate = taiwanTime.toISOString().slice(0, 10); // YYYY-MM-DD
   
-  // 使用 INSERT ... ON DUPLICATE KEY UPDATE 確保原子操作
   await connection.query(`
     INSERT INTO order_sequences (date, last_number)
     VALUES (?, 1)
     ON DUPLICATE KEY UPDATE last_number = last_number + 1
   `, [todayDate]);
 
-  // 取得更新後的流水號
   const [result] = await connection.query(`
     SELECT last_number FROM order_sequences WHERE date = ?
   `, [todayDate]);
@@ -571,5 +536,61 @@ async function generateOrderNo(connection) {
 
   return orderNo;
 }
+
+// ========================================
+// 8. 會員自行取消訂單 (需歸還庫存)
+// PUT /api/orders/:orderNo/cancel
+// ========================================
+router.put('/:orderNo/cancel', protect, async (req, res) => {
+  const connection = await promisePool.getConnection();
+  try {
+    await connection.beginTransaction();
+    
+    const { orderNo } = req.params;
+    const userId = req.user.id;
+
+    // 1. 查詢訂單
+    const [orders] = await connection.query(`
+      SELECT id, status, payment_status 
+      FROM orders 
+      WHERE order_no = ? AND user_id = ?
+    `, [orderNo, userId]);
+
+    if (orders.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: '找不到訂單' });
+    }
+    const order = orders[0];
+
+    // 2. 只有 "待付款" 或 "待出貨" 可以取消
+    if (order.status !== 'pending' && order.status !== 'paid') {
+      await connection.rollback();
+      return res.status(400).json({ success: false, message: '訂單已進入出貨流程，無法取消' });
+    }
+
+    // 3. 歸還庫存
+    const [items] = await connection.query('SELECT product_id, variant_id, quantity FROM order_items WHERE order_id = ?', [order.id]);
+    for (const item of items) {
+      if (item.variant_id) {
+        await connection.query('UPDATE product_variants SET stock = stock + ? WHERE id = ?', [item.quantity, item.variant_id]);
+      } else {
+        await connection.query('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
+      }
+    }
+
+    // 4. 更新狀態
+    await connection.query("UPDATE orders SET status = 'cancelled', updated_at = NOW() WHERE id = ?", [order.id]);
+    
+    await connection.commit();
+    res.json({ success: true, message: '訂單已成功取消' });
+
+  } catch (error) {
+    await connection.rollback();
+    console.error('取消失敗:', error);
+    res.status(500).json({ success: false, message: '系統錯誤' });
+  } finally {
+    connection.release();
+  }
+});
 
 module.exports = router;

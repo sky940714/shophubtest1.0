@@ -214,6 +214,39 @@ const MemberPage: React.FC = () => {
     }
   };
 
+  // ==========================================
+  // [新增] 取消訂單功能
+  // ==========================================
+  const handleCancelOrder = async (orderNo: string) => {
+    if (!window.confirm('確定要取消這筆訂單嗎？\n如果是已付款訂單，取消後我們將進行退款流程。')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      // 注意：如果您是 App 版，這裡的網址必須是完整的 https://...
+      // 如果您的專案有設定 API_BASE 變數，也可以使用 `${API_BASE}/orders/${orderNo}/cancel`
+      const res = await fetch(`https://www.anxinshophub.com/api/orders/${orderNo}/cancel`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+        fetchOrders(); // 重新整理訂單列表
+      } else {
+        alert(data.message || '取消失敗');
+      }
+    } catch (error) {
+      console.error('取消訂單錯誤:', error);
+      alert('系統錯誤，請稍後再試');
+    }
+  };
+
   // 更新基本資料
   const handleUpdateProfile = async () => {
     const token = localStorage.getItem('token');
@@ -527,25 +560,46 @@ const MemberPage: React.FC = () => {
                       </span>
                       <p className="order-total">NT$ {order.total.toLocaleString()}</p>
                       
-                      {/* [新增] 只有 "已完成" 的訂單才顯示申請退貨按鈕 */}
-                      {order.status === 'completed' && (
-                        <button 
-                          className="return-btn"
-                          style={{
-                            marginTop: '8px',
-                            padding: '4px 8px',
-                            fontSize: '12px',
-                            color: '#e53e3e',
-                            border: '1px solid #e53e3e',
-                            borderRadius: '4px',
-                            background: 'white',
-                            cursor: 'pointer'
-                          }}
-                          onClick={() => handleOpenReturn(order.order_no)}
-                        >
-                          申請退貨
-                        </button>
-                      )}
+                      {/* 按鈕容器 */}
+                      <div style={{ marginTop: '8px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        
+                        {/* [新增] 取消按鈕：只有 "待付款" 或 "待出貨" 狀態顯示 */}
+                        {(order.status === 'pending' || order.status === 'paid') && (
+                          <button 
+                            onClick={() => handleCancelOrder(order.order_no)}
+                            style={{
+                              padding: '4px 12px',
+                              fontSize: '12px',
+                              color: '#6b7280',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '4px',
+                              background: 'white',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            取消訂單
+                          </button>
+                        )}
+
+                        {/* 原有的退貨按鈕：只有 "已完成" 狀態顯示 */}
+                        {order.status === 'completed' && (
+                          <button 
+                            className="return-btn"
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '12px',
+                              color: '#e53e3e',
+                              border: '1px solid #e53e3e',
+                              borderRadius: '4px',
+                              background: 'white',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => handleOpenReturn(order.order_no)}
+                          >
+                            申請退貨
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
