@@ -169,6 +169,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
   }, [setShippingInfo]);
 
   // 選擇超商門市 (開啟綠界地圖)
+  // 選擇超商門市 (開啟綠界地圖)
   const handleSelectStore = async () => {
     if (!shippingSubType) {
       alert('請先選擇超商類型 (7-11/全家/萊爾富/OK)');
@@ -176,32 +177,33 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
     }
 
     try {
-      // 從後端取得綠界參數
-      const response = await fetch(`https://www.anxinshophub.com/api/ecpay/map?logisticsSubType=${shippingSubType}`);
-      if (!response.ok) throw new Error('Network response was not ok');
-      const params = await response.json();
-
       // 判斷是否在 App 環境
       const isApp = Capacitor.isNativePlatform();
 
       if (isApp) {
-        // === App 環境：用 Capacitor Browser ===
+        // ==========================================
+        // [修改] App 環境：直接開啟後端做好的中繼頁面
+        // ==========================================
+        // 這樣可以解決 Android 不支援 GET 參數的問題
+        // 請確保您的後端已經部署了新的 /map-page 路由
+        const bridgeUrl = `https://www.anxinshophub.com/api/ecpay/map-page?logisticsSubType=${shippingSubType}`;
         
-        // 建立表單資料
-        const formData = new URLSearchParams();
-        Object.keys(params).forEach(key => {
-          if (key !== 'actionUrl') {
-            formData.append(key, params[key]);
-          }
-        });
-
-        // 開啟綠界地圖
+        console.log('App 開啟地圖頁面:', bridgeUrl);
+        
         await Browser.open({ 
-          url: `${params.actionUrl}?${formData.toString()}`,
+          url: bridgeUrl,
+          windowName: '_self', // 建議設定，讓體驗更像原生跳轉
+          presentationStyle: 'fullscreen'
         });
 
       } else {
-        // === 網頁環境：維持原本的 window.open ===
+        // ==========================================
+        // 網頁環境：維持原本邏輯 (完全不動)
+        // ==========================================
+        const response = await fetch(`https://www.anxinshophub.com/api/ecpay/map?logisticsSubType=${shippingSubType}`);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const params = await response.json();
+
         const width = 800;
         const height = 600;
         const left = (window.screen.width - width) / 2;
@@ -240,9 +242,9 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
         document.body.removeChild(form);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('開啟門市地圖失敗:', error);
-      alert('開啟門市地圖失敗，請稍後再試');
+      alert(`開啟門市地圖失敗，請稍後再試: ${error.message || ''}`);
     }
   };
 
