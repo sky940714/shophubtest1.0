@@ -69,6 +69,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
 
   const [homeDeliveryFee, setHomeDeliveryFee] = useState<number>(100);
 
+  console.log('🔥🔥🔥 這是最新版 V2.0 🔥🔥🔥');
   useEffect(() => {
     const fetchShippingFee = async () => {
       try {
