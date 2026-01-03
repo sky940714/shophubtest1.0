@@ -101,19 +101,23 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
   }, []);
 
   // ==========================================
-  // 監聽綠界地圖回傳（支援 App Deep Link + 網頁 postMessage）
+  // [修正版] 監聽綠界地圖回傳
   // ==========================================
   useEffect(() => {
     // 處理門市資料的共用函數
     const handleStoreData = (data: { storeId?: string; storeName?: string; storeAddress?: string }) => {
-      if (data && data.storeId && data.storeName) {
+      if (data && data.storeId) {
         console.log('收到門市資料:', data);
-        setShippingInfo(prev => ({
-          ...prev,
-          storeId: data.storeId,
-          storeName: data.storeName,
-          storeAddress: data.storeAddress
-        }));
+        
+        // 使用 setTimeout 確保 iOS UI 渲染順暢
+        setTimeout(() => {
+          setShippingInfo(prev => ({
+            ...prev,
+            storeId: data.storeId,
+            storeName: data.storeName,
+            storeAddress: data.storeAddress
+          }));
+        }, 100);
       }
     };
 
@@ -130,26 +134,29 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
       App.addListener('appUrlOpen', async (event) => {
         console.log('App URL opened:', event.url);
         
-        // 解析 URL: shophubapp://map-callback?storeId=xxx&storeName=xxx&storeAddress=xxx
-        if (event.url.includes('map-callback')) {
+        // 🔥 [修正 1] 同時檢查後端可能回傳的兩種關鍵字 (map-result 或 map-callback)
+        if (event.url.includes('map-callback') || event.url.includes('map-result')) {
           try {
-            // 處理 custom scheme URL
-            const urlString = event.url.replace('shophubapp://', 'https://dummy.com/');
-            const url = new URL(urlString);
-            const storeData = {
-              storeId: url.searchParams.get('storeId') || '',
-              storeName: decodeURIComponent(url.searchParams.get('storeName') || ''),
-              storeAddress: decodeURIComponent(url.searchParams.get('storeAddress') || '')
-            };
-            
-            handleStoreData(storeData);
-            
-            // 關閉 Browser
+            // 🔥 [修正 2] iOS 關鍵：一定要「先」關閉瀏覽器，再處理資料
             try {
               await Browser.close();
             } catch (e) {
               console.log('Browser already closed');
             }
+
+            // 解析 URL (將 custom scheme 替換成 http 以便 URL 物件解析)
+            const urlString = event.url.replace('shophubapp://', 'https://dummy.com/');
+            const url = new URL(urlString);
+            
+            const storeData = {
+              storeId: url.searchParams.get('storeId') || '',
+              storeName: decodeURIComponent(url.searchParams.get('storeName') || ''),
+              // 兼容兩種參數命名
+              storeAddress: decodeURIComponent(url.searchParams.get('address') || url.searchParams.get('storeAddress') || '')
+            };
+            
+            handleStoreData(storeData);
+            
           } catch (e) {
             console.error('解析 URL 失敗:', e);
           }
