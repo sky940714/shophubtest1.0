@@ -1,9 +1,10 @@
 // src/pages/MemberPage.tsx
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Package, FileText, MessageSquare, LogOut, ChevronRight, RefreshCcw, ChevronLeft } from 'lucide-react';
+import { User, Package, FileText, MessageSquare, LogOut, ChevronRight, RefreshCcw, ChevronLeft, CreditCard } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import './MemberPage.css';
+import ECPayForm from './checkout/components/ECPayForm';
 
 interface OrderItem {
   product_name: string;
@@ -15,6 +16,7 @@ interface Order {
   id: number;
   order_no: string;
   status: 'pending' | 'paid' | 'shipped' | 'completed' | 'cancelled' | 'return_requested'; // 新增 return_requested
+  payment_method: string; 
   items: OrderItem[];
   total: number;
   created_at: string;
@@ -40,7 +42,7 @@ interface ShippingAddress {
 
 const MemberPage: React.FC = () => {
   const navigate = useNavigate();
-  const API_BASE = 'https://www.anxinshophub.com/api';
+  const API_BASE = '/api';
 
   // 會員資料
   const [profile, setProfile] = useState<MemberProfile | null>(null);
@@ -76,6 +78,33 @@ const MemberPage: React.FC = () => {
     bankCode: '',
     bankAccount: ''
   });
+
+  // ✅ [新增] 綠界金流參數 State
+  const [ecpayParams, setEcpayParams] = useState<any>(null);
+
+  // ✅ [新增] 處理重新付款
+  const handlePay = async (orderId: number) => {
+    try {
+      const token = localStorage.getItem('token'); // 記得帶 Token 雖然這個 API 可能不需要，但保持習慣
+      const res = await fetch('/api/ecpay/checkout', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ orderId })
+      });
+      const params = await res.json();
+      if (params) {
+        setEcpayParams(params); // 設定後 ECPayForm 會自動提交
+      } else {
+        alert('無法取得付款資訊');
+      }
+    } catch (error) {
+      console.error('付款請求失敗:', error);
+      alert('無法前往付款頁面，請稍後再試');
+    }
+  };
 
   // 表單狀態
   const [editName, setEditName] = useState('');
@@ -563,6 +592,28 @@ const MemberPage: React.FC = () => {
                       {/* 按鈕容器 */}
                       <div style={{ marginTop: '8px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         
+                        {/* ✅ [新增] 前往付款按鈕：未付款 + 非取消 + 非貨到付款 */}
+                        {order.status === 'pending' && // 假設 pending 是待處理/未付款狀態
+                         order.payment_method !== 'cod' && (
+                          <button 
+                            onClick={() => handlePay(order.id)}
+                            style={{
+                              padding: '4px 12px',
+                              fontSize: '12px',
+                              color: 'white',
+                              backgroundColor: '#28a745', // 綠色
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <CreditCard size={14} />
+                            前往付款
+                          </button>
+                        )}
                         {/* [新增] 取消按鈕：只有 "待付款" 或 "待出貨" 狀態顯示 */}
                         {(order.status === 'pending' || order.status === 'paid') && (
                           <button 
@@ -917,6 +968,8 @@ const MemberPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* ✅ [新增] 隱藏的綠界表單 */}
+      <ECPayForm params={ecpayParams} />
     </div>
   );
 };
