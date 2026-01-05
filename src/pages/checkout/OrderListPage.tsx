@@ -18,6 +18,7 @@ interface Order {
 
 const OrderListPage: React.FC = () => {
   const navigate = useNavigate();
+  const API_BASE = 'https://www.anxinshophub.com/api';
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [ecpayParams, setEcpayParams] = useState<any>(null); // 1. 新增 State
@@ -29,8 +30,7 @@ const OrderListPage: React.FC = () => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('token');
-      // 2. 修正路徑：從 /api/orders 改為 /api/orders/user/list
-      const response = await fetch('/api/orders/user/list', { 
+      const response = await fetch(`${API_BASE}/orders/user/list`, { 
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -51,7 +51,7 @@ const OrderListPage: React.FC = () => {
   const handlePay = async (e: React.MouseEvent, orderId: number) => {
     e.stopPropagation(); // 防止點擊觸發 "查看詳情"
     try {
-      const response = await fetch('/api/ecpay/checkout', {
+      const response = await fetch(`${API_BASE}/ecpay/checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -42,7 +42,7 @@ interface ShippingAddress {
 
 const MemberPage: React.FC = () => {
   const navigate = useNavigate();
-  const API_BASE = '/api';
+  const API_BASE = 'https://www.anxinshophub.com/api';
 
   // 會員資料
   const [profile, setProfile] = useState<MemberProfile | null>(null);
@@ -85,8 +85,9 @@ const MemberPage: React.FC = () => {
   // ✅ [新增] 處理重新付款
   const handlePay = async (orderId: number) => {
     try {
-      const token = localStorage.getItem('token'); // 記得帶 Token 雖然這個 API 可能不需要，但保持習慣
-      const res = await fetch('/api/ecpay/checkout', {
+      const token = localStorage.getItem('token');
+      // ✅ 2. 修正為使用 API_BASE (或完整網址)
+      const res = await fetch(`${API_BASE}/ecpay/checkout`, { 
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
