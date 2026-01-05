@@ -4,7 +4,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { User, Package, FileText, MessageSquare, LogOut, ChevronRight, RefreshCcw, ChevronLeft, CreditCard } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import './MemberPage.css';
-import ECPayForm from './checkout/components/ECPayForm';
 
 interface OrderItem {
   product_name: string;
@@ -79,32 +78,10 @@ const MemberPage: React.FC = () => {
     bankAccount: ''
   });
 
-  // ✅ [新增] 綠界金流參數 State
-  const [ecpayParams, setEcpayParams] = useState<any>(null);
-
   // ✅ [新增] 處理重新付款
-  const handlePay = async (orderId: number) => {
-    try {
-      const token = localStorage.getItem('token');
-      // ✅ 2. 修正為使用 API_BASE (或完整網址)
-      const res = await fetch(`${API_BASE}/ecpay/checkout`, { 
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ orderId })
-      });
-      const params = await res.json();
-      if (params) {
-        setEcpayParams(params); // 設定後 ECPayForm 會自動提交
-      } else {
-        alert('無法取得付款資訊');
-      }
-    } catch (error) {
-      console.error('付款請求失敗:', error);
-      alert('無法前往付款頁面，請稍後再試');
-    }
+  // ✅ 2. 改為直接導向後端付款頁面
+  const handlePay = (orderId: number) => {
+    window.location.href = `${API_BASE}/ecpay/pay/${orderId}`;
   };
 
   // 表單狀態
@@ -969,8 +946,6 @@ const MemberPage: React.FC = () => {
           </div>
         </div>
       )}
-      {/* ✅ [新增] 隱藏的綠界表單 */}
-      <ECPayForm params={ecpayParams} />
     </div>
   );
 };

@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, ChevronRight, ArrowLeft, CreditCard } from 'lucide-react';
 import './styles/OrderListPage.css';
-import ECPayForm from './components/ECPayForm'; // 新增這行
 
 interface Order {
   id: number;
@@ -21,7 +20,6 @@ const OrderListPage: React.FC = () => {
   const API_BASE = 'https://www.anxinshophub.com/api';
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [ecpayParams, setEcpayParams] = useState<any>(null); // 1. 新增 State
 
   useEffect(() => {
     fetchOrders();
@@ -48,27 +46,11 @@ const OrderListPage: React.FC = () => {
   };
 
   // 3. 新增付款處理函式
-  const handlePay = async (e: React.MouseEvent, orderId: number) => {
-    e.stopPropagation(); // 防止點擊觸發 "查看詳情"
-    try {
-      const response = await fetch(`${API_BASE}/ecpay/checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ orderId }),
-      });
-      
-      const params = await response.json();
-      if (params) {
-        setEcpayParams(params); // 設定參數，觸發 ECPayForm 自動提交
-      } else {
-        alert('無法取得付款資訊');
-      }
-    } catch (error) {
-      console.error('付款請求失敗:', error);
-      alert('無法前往付款頁面，請稍後再試');
-    }
+  // ✅ 3. 改為直接導向後端付款頁面
+  const handlePay = (e: React.MouseEvent, orderId: number) => {
+    e.stopPropagation();
+    // 讓後端處理一切，保證編號全新
+    window.location.href = `${API_BASE}/ecpay/pay/${orderId}`;
   };
 
   const getStatusText = (status: string) => {
@@ -197,9 +179,6 @@ const OrderListPage: React.FC = () => {
           </div>
         )}
       </div>
-      
-      {/* 在這裡掛載隱藏的表單 */}
-      <ECPayForm params={ecpayParams} />
     </div>
   );
 };
