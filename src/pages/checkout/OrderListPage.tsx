@@ -1,8 +1,9 @@
 // src/pages/checkout/OrderListPage.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Package, ChevronRight, ArrowLeft, CreditCard } from 'lucide-react';
 import './styles/OrderListPage.css';
+import ECPayForm from './components/ECPayForm'; // 新增這行
 
 interface Order {
   id: number;
@@ -12,12 +13,14 @@ interface Order {
   payment_status: string;
   created_at: string;
   items_count: number;
+  payment_method: string; // 新增這行
 }
 
 const OrderListPage: React.FC = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ecpayParams, setEcpayParams] = useState<any>(null); // 1. 新增 State
 
   useEffect(() => {
     fetchOrders();
@@ -26,7 +29,8 @@ const OrderListPage: React.FC = () => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://www.anxinshophub.com/api/orders', {
+      // 2. 修正路徑：從 /api/orders 改為 /api/orders/user/list
+      const response = await fetch('/api/orders/user/list', { 
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -40,6 +44,30 @@ const OrderListPage: React.FC = () => {
       console.error('取得訂單列表失敗:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 3. 新增付款處理函式
+  const handlePay = async (e: React.MouseEvent, orderId: number) => {
+    e.stopPropagation(); // 防止點擊觸發 "查看詳情"
+    try {
+      const response = await fetch('/api/ecpay/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId }),
+      });
+      
+      const params = await response.json();
+      if (params) {
+        setEcpayParams(params); // 設定參數，觸發 ECPayForm 自動提交
+      } else {
+        alert('無法取得付款資訊');
+      }
+    } catch (error) {
+      console.error('付款請求失敗:', error);
+      alert('無法前往付款頁面，請稍後再試');
     }
   };
 
@@ -134,6 +162,31 @@ const OrderListPage: React.FC = () => {
                 </div>
 
                 <div className="order-footer">
+                  {/* 新增付款按鈕：僅在未付款且非貨到付款時顯示 */}
+                  {order.payment_status === 'unpaid' && 
+                   order.status !== 'cancelled' && 
+                   order.payment_method !== 'cod' && (
+                    <button 
+                      className="pay-now-btn"
+                      onClick={(e) => handlePay(e, order.id)}
+                      style={{ 
+                        marginRight: '10px', 
+                        backgroundColor: '#28a745', 
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <CreditCard size={16} />
+                      前往付款
+                    </button>
+                  )}
+
                   <button className="view-detail-btn">
                     查看詳情
                     <ChevronRight size={18} />
@@ -144,6 +197,9 @@ const OrderListPage: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {/* 在這裡掛載隱藏的表單 */}
+      <ECPayForm params={ecpayParams} />
     </div>
   );
 };
