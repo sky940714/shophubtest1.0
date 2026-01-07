@@ -6,7 +6,6 @@ import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import './styles/ShippingForm.css';
 
-
 interface ShippingInfo {
   name: string;
   phone: string;
@@ -77,10 +76,10 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
 
   const [homeDeliveryFee, setHomeDeliveryFee] = useState<number>(100);
 
-  // ✅ [新增] 歷史門市列表 State
+  // 歷史門市列表 State
   const [cvsStoreHistory, setCvsStoreHistory] = useState<CvsStoreHistory[]>([]);
 
-  // ✅ [新增] 載入歷史門市 (當選擇超商類型時觸發)
+  // 載入歷史門市 (當選擇超商類型時觸發)
   useEffect(() => {
     const fetchCvsHistory = async () => {
       if (shippingMethod !== 'cvs' || !shippingSubType) {
@@ -92,7 +91,6 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
       if (!token) return;
 
       try {
-        // 注意：使用完整網址
         const res = await fetch(`https://www.anxinshophub.com/api/members/cvs-stores?type=${shippingSubType}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -108,10 +106,9 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
     fetchCvsHistory();
   }, [shippingMethod, shippingSubType]);
 
-  // ✅ [新增] 儲存門市到歷史記錄的函式
+  // 儲存門市到歷史記錄的函式
   const saveCvsStoreToHistory = async (storeId: string, storeName: string, storeAddress: string) => {
     const token = localStorage.getItem('token');
-    // 這裡需要依賴最新的 shippingSubType，所以稍後 useEffect 要加入依賴
     if (!token || !shippingSubType) return;
 
     try {
@@ -128,13 +125,12 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
           store_address: storeAddress
         })
       });
-      // (選擇性) 可以在這裡重新 fetchCvsHistory 以更新列表，或是等待下次渲染
     } catch (error) {
       console.error('儲存門市失敗:', error);
     }
   };
 
-  console.log('🔥🔥🔥 這是最新版 V2.0 🔥🔥🔥');
+  // 載入運費設定
   useEffect(() => {
     const fetchShippingFee = async () => {
       try {
@@ -167,13 +163,15 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
   }, []);
 
   // ==========================================
-  // [修正版] 監聽綠界地圖回傳
+  // [修正版] 監聽綠界門市回傳 (Web + App)
   // ==========================================
   useEffect(() => {
+    // 共用的資料處理函式
     const handleStoreData = (data: { storeId?: string; storeName?: string; storeAddress?: string }) => {
       if (data && data.storeId) {
         console.log('收到門市資料:', data);
         
+        // 稍微延遲以確保 State 更新順序
         setTimeout(() => {
           setShippingInfo(prev => ({
             ...prev,
@@ -182,7 +180,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
             storeAddress: data.storeAddress
           }));
 
-          // ✅ [新增] 同步儲存到歷史紀錄
+          // 同步儲存到歷史紀錄
           if (data.storeId && data.storeName && data.storeAddress) {
              saveCvsStoreToHistory(data.storeId, data.storeName, data.storeAddress);
           }
@@ -190,25 +188,49 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
       }
     };
     
-    // ... (原本的 postMessage 和 AppUrlOpen 監聽器程式碼完全不用動) ...
+    // 1. 網頁版監聽 (PostMessage)
     const handleEcpayMessage = (event: MessageEvent) => { handleStoreData(event.data); };
     window.addEventListener('message', handleEcpayMessage);
     
+    // 2. App 版監聽 (Deep Link)
     let appUrlListener: any = null;
+
     if (Capacitor.isNativePlatform()) {
-       // ... (保留您原本的 App 監聽程式碼) ...
+      App.addListener('appUrlOpen', (event) => {
+        // 檢查網址是否包含 map-result (門市回傳)
+        if (event.url.includes('map-result')) {
+          const url = new URL(event.url);
+          
+          // 解析後端參數
+          const storeId = url.searchParams.get('storeId');
+          const storeName = url.searchParams.get('storeName'); // 後端參數名
+          const address = url.searchParams.get('address');     // 後端參數名
+          
+          if (storeId) {
+            handleStoreData({
+              storeId: storeId,
+              storeName: decodeURIComponent(storeName || ''), // 防止中文亂碼
+              storeAddress: decodeURIComponent(address || '')
+            });
+
+            // (選用) 關閉瀏覽器視窗，通常 Deep Link 會自動切換回來
+            Browser.close();
+          }
+        }
+      }).then(listener => {
+        appUrlListener = listener;
+      });
     }
 
+    // 3. 統一清除監聽器
     return () => {
       window.removeEventListener('message', handleEcpayMessage);
       if (appUrlListener) {
         appUrlListener.remove();
       }
     };
-    // ✅ [重要] 依賴列表要補上 shippingSubType (為了存檔用)
-  }, [setShippingInfo, shippingSubType]);
+  }, [setShippingInfo, shippingSubType]); // 依賴項目
 
-  // 選擇超商門市 (開啟綠界地圖)
   // 選擇超商門市 (開啟綠界地圖)
   const handleSelectStore = async () => {
     if (!shippingSubType) {
@@ -221,25 +243,19 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
       const isApp = Capacitor.isNativePlatform();
 
       if (isApp) {
-        // ==========================================
-        // [修改] App 環境：直接開啟後端做好的中繼頁面
-        // ==========================================
-        // 這樣可以解決 Android 不支援 GET 參數的問題
-        // 請確保您的後端已經部署了新的 /map-page 路由
+        // App 環境：直接開啟後端做好的中繼頁面
         const bridgeUrl = `https://www.anxinshophub.com/api/ecpay/map-page?logisticsSubType=${shippingSubType}`;
         
         console.log('App 開啟地圖頁面:', bridgeUrl);
         
         await Browser.open({ 
           url: bridgeUrl,
-          windowName: '_self', // 建議設定，讓體驗更像原生跳轉
+          windowName: '_self',
           presentationStyle: 'fullscreen'
         });
 
       } else {
-        // ==========================================
-        // 網頁環境：維持原本邏輯 (完全不動)
-        // ==========================================
+        // 網頁環境：維持原本邏輯
         const response = await fetch(`https://www.anxinshophub.com/api/ecpay/map?logisticsSubType=${shippingSubType}`);
         if (!response.ok) throw new Error('Network response was not ok');
         const params = await response.json();
@@ -473,7 +489,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
                 </button>
               </div>
 
-{/* ✅ [新增] 歷史門市列表區塊 */}
+              {/* 歷史門市列表 */}
               {shippingSubType && cvsStoreHistory.length > 0 && (
                 <div className="cvs-history">
                   <label className="form-label">📍 最近使用的門市</label>
@@ -508,7 +524,6 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
                   </div>
                 </div>
               )}
-              {/* ✅ [新增結束] */}
 
               {shippingSubType && (
                 <div className="store-selector">
@@ -598,7 +613,7 @@ const ShippingForm: React.FC<ShippingFormProps> = ({
               </div>
             )}
 
-            {/* [新增] 宅配貨到付款 - 只有宅配才顯示 */}
+            {/* 宅配貨到付款 - 只有宅配才顯示 */}
             {shippingMethod === 'home' && (
               <div
                 className={`payment-option ${paymentMethod === 'cod' ? 'selected' : ''}`}
