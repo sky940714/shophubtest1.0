@@ -21,19 +21,17 @@ import PaymentResultPage from './pages/checkout/PaymentResultPage';
 
 function App() {
   return (
-    <CartProvider>
-      <Router>
+    <Router>
+      <CartProvider>
         <Routes>
-          {/* 首頁 - 公開訪問 */}
+          
           <Route path="/" element={<HomePage />} />
-
-          {/* 商品詳情頁 - 公開訪問 */}
           <Route path="/product/:id" element={<ProductDetailPage />} />
+          
+          <Route path="/search" element={<SearchPage />} />
 
-          {/* 登入頁面 */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* 前台路由 - 需要登入 */}
           <Route
             path="/member"
             element={
@@ -51,20 +49,12 @@ function App() {
             }
           />
           <Route
-            path="/search"
-            element={
-              <ProtectedRoute>
-                <SearchPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
             path="/cart"
             element={
               <ProtectedRoute>
                 <CartPage />
               </ProtectedRoute>
-              }
+            }
             />
 
           {/* 結帳相關路由 - 需要登入 - 新增區塊 */}
@@ -121,8 +111,8 @@ function App() {
             }
           />
         </Routes>
-      </Router>
-    </CartProvider>
+      </CartProvider>
+    </Router>
   );
 }
 

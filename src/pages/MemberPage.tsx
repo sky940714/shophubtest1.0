@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { User, Package, FileText, MessageSquare, LogOut, ChevronRight, RefreshCcw, ChevronLeft, CreditCard } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
 import './MemberPage.css';
+import ECPayForm from './checkout/components/ECPayForm';
 
 interface OrderItem {
   product_name: string;
@@ -41,7 +42,7 @@ interface ShippingAddress {
 
 const MemberPage: React.FC = () => {
   const navigate = useNavigate();
-  const API_BASE = 'https://www.anxinshophub.com/api';
+  const API_BASE = '/api';
 
   // 會員資料
   const [profile, setProfile] = useState<MemberProfile | null>(null);
@@ -78,10 +79,31 @@ const MemberPage: React.FC = () => {
     bankAccount: ''
   });
 
+  // ✅ [新增] 綠界金流參數 State
+  const [ecpayParams, setEcpayParams] = useState<any>(null);
+
   // ✅ [新增] 處理重新付款
-  // ✅ 2. 改為直接導向後端付款頁面
-  const handlePay = (orderId: number) => {
-    window.location.href = `${API_BASE}/ecpay/pay/${orderId}`;
+  const handlePay = async (orderId: number) => {
+    try {
+      const token = localStorage.getItem('token'); // 記得帶 Token 雖然這個 API 可能不需要，但保持習慣
+      const res = await fetch('/api/ecpay/checkout', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ orderId })
+      });
+      const params = await res.json();
+      if (params) {
+        setEcpayParams(params); // 設定後 ECPayForm 會自動提交
+      } else {
+        alert('無法取得付款資訊');
+      }
+    } catch (error) {
+      console.error('付款請求失敗:', error);
+      alert('無法前往付款頁面，請稍後再試');
+    }
   };
 
   // 表單狀態
@@ -391,6 +413,39 @@ const MemberPage: React.FC = () => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    const confirmDelete = window.confirm(
+      '【嚴重警告】您確定要永久刪除帳號嗎？\n\n1. 此動作無法復原。\n2. 您的購物車、收藏清單與點數將被清空。\n\n如果您確定要刪除，請按「確定」。'
+    );
+
+    if (!confirmDelete) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${API_BASE}/auth/delete`, { // 呼叫剛剛寫好的後端 API
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        alert('帳號已成功刪除。');
+        // 刪除成功後，執行登出動作清除本地資料
+        localStorage.removeItem('token');
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('isAdmin');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userName');
+        navigate('/login'); // 踢回登入頁
+      } else {
+        alert(data.message || '刪除失敗');
+      }
+    } catch (error) {
+      console.error('刪除帳號錯誤:', error);
+      alert('系統發生錯誤，請稍後再試');
+    }
+  };
+
   const handleLogout = () => {
     if (window.confirm('確定要登出嗎?')) {
       localStorage.removeItem('token');
@@ -525,6 +580,15 @@ const MemberPage: React.FC = () => {
             <button className="menu-item" onClick={handleCustomerService}>
               <MessageSquare size={22} />
               <span>客服留言</span>
+              <ChevronRight size={22} className="menu-arrow" />
+            </button>
+            <button 
+              className="menu-item" 
+              onClick={handleDeleteAccount}
+              style={{ color: '#dc2626' }} // 使用紅色字體警示
+            >
+              <LogOut size={22} /> {/* 暫用 LogOut icon，也可換其他 */}
+              <span>刪除帳號</span>
               <ChevronRight size={22} className="menu-arrow" />
             </button>
             <button className="menu-item logout-item" onClick={handleLogout}>
@@ -946,6 +1010,8 @@ const MemberPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* ✅ [新增] 隱藏的綠界表單 */}
+      <ECPayForm params={ecpayParams} />
     </div>
   );
 };
