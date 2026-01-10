@@ -61,7 +61,7 @@ const OrderDetailPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`/api/orders/${orderNo}`, {
+      const response = await fetch(`https://www.anxinshophub.com/api/orders/${orderNo}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
