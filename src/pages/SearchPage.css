@@ -26,7 +26,7 @@
 }
 
 .back-button {
-  color: white;
+  color: rgb(0, 0, 0);
   text-decoration: none;
   font-size: 1.125rem;
   transition: opacity 0.2s;

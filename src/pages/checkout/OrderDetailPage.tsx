@@ -7,7 +7,7 @@ import './styles/OrderDetailPage.css';
 interface OrderItem {
   id: number;
   product_name: string;
-  product_price: number;
+  price: number;
   quantity: number;
   subtotal: number;
 }
@@ -61,7 +61,7 @@ const OrderDetailPage: React.FC = () => {
         return;
       }
 
-      const response = await fetch(`https://www.anxinshophub.com/api/orders/${orderNo}`, {
+      const response = await fetch(`/api/orders/${orderNo}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -308,7 +308,7 @@ const OrderDetailPage: React.FC = () => {
                   <div className="item-main">
                     <div className="item-info">
                       <div className="item-name">{item.product_name}</div>
-                      <div className="item-price">單價: NT$ {item.product_price.toLocaleString()}</div>
+                      <div className="item-price">單價: NT$ {item.price.toLocaleString()}</div>
                     </div>
                     <div className="item-right">
                       <div className="item-quantity">x {item.quantity}</div>
